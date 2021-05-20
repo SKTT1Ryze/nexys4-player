@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 serialport = { path = "../serialport-rs" }
+conrod = { version = "0.52.0", features = ["piston", "glium", "winit"] }
