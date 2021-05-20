@@ -1,10 +1,11 @@
 // 华中科技大学接口技术大作业
-use bevy::prelude::*;
-use rand::prelude::*;
-use std::time::Duration;
 
-const pos_vec: [(i32, i32); 5] = [(0, 0), (10, 10), (20, 20), (30, 30), (40, 40)];
-static mut pos_idx: usize = 0;
+mod serial;
+
+use bevy::prelude::*;
+use std::time::Duration;
+use serial::Nexys4Serial;
+
 struct SnakeHead;
 struct Materials {
     head_material: Handle<ColorMaterial>,
@@ -18,8 +19,8 @@ impl Default for SnakeSpawnTimer {
 }
 
 // Commands -> Resources -> Components -> Queries
-fn setup(mut commands: Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
-    commands.spawn(Camera2dComponents::default());
+fn setup(commands: &mut Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
+    commands.spawn(Camera2dBundle::default());
     commands.insert_resource(
         Materials {
             head_material: materials.add(Color::rgb(0.7, 0.7, 0.7).into())
@@ -27,9 +28,9 @@ fn setup(mut commands: Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
     );
 }
 
-fn game_setup(mut commands: Commands, materials: Res<Materials>) {
+fn game_setup(commands: &mut Commands, materials: Res<Materials>) {
     commands.spawn(
-        SpriteComponents {
+        SpriteBundle {
             material: materials.head_material.clone(),
             sprite: Sprite::new(Vec2::new(10.0, 10.0)),
             ..Default::default()
@@ -37,28 +38,29 @@ fn game_setup(mut commands: Commands, materials: Res<Materials>) {
     ).with(SnakeHead);
 }
 
-fn snake_movement(mut head_positions: Query<With<SnakeHead, &mut Transform>>) {
-    for mut transform in &mut head_positions.iter() {
-        let x = transform.translation().x();
-        transform.translation_mut().set_x( x + 2.0);        
+fn snake_movement(mut snake_head: Query<(&mut SnakeHead, &mut Transform)>) {
+    for (_head, mut head_pos) in snake_head.iter_mut() {
+        head_pos.translation.x += 1.0;        
     }
 }
 
 fn snake_spawn(
-    mut commands: Commands,
+    commands: &mut Commands,
     materials: Res<Materials>,
     time: Res<Time>,
-    mut timer: ResMut<SnakeSpawnTimer>
+    mut timer: ResMut<SnakeSpawnTimer>,
+    mut serial: ResMut<Nexys4Serial>
 ) {
-    timer.0.tick(time.delta_seconds);
-    let mut transfrom = Transform::default();
-    let mut vec_3 = Vec3::default();
-    vec_3.set_x(pos_vec[unsafe{pos_idx}].0 as f32);
-    vec_3.set_y(pos_vec[unsafe{pos_idx}].1 as f32);
-    transfrom.set_translation(vec_3);
-    if timer.0.finished {
+    timer.0.tick(time.delta_seconds());
+    if timer.0.finished() {
+        if let Ok(temp) = serial.read_one_byte() {
+            println!("receive serial data: {}", temp);
+            serial.update_temp(temp);
+        }
+        let mut transfrom = Transform::default();
+        transfrom.translation.y = serial.prev_temp() as f32;
         commands.spawn(
-            SpriteComponents {
+            SpriteBundle {
                 material: materials.head_material.clone(),
                 sprite: Sprite::new(Vec2::new(10.0, 10.0)),
                 transform: transfrom,
@@ -66,22 +68,24 @@ fn snake_spawn(
             }
         )
         .with(SnakeHead);
-        unsafe { pos_idx = (pos_idx + 1) % 5; }
     }
 }
 
 fn main() {
     println!("hello, nexys4!");
     App::build()
-        .add_resource(SnakeSpawnTimer(Timer::new(
-            Duration::from_millis(500. as u64),
-            true,
-        )))
+        .add_resource(
+            SnakeSpawnTimer(
+                Timer::new(Duration::from_millis(100. as u64), true)
+            )
+        )
+        .add_resource(
+            Nexys4Serial::first_available(115_200).expect("failed to get serial")
+        )
         .add_startup_system(setup.system())
-        .add_startup_stage("game_setup")
-        .add_startup_system_to_stage("game_setup", game_setup.system())
+        .add_startup_stage("game_setup", SystemStage::single(game_setup.system()))
         .add_system(snake_movement.system())
         .add_system(snake_spawn.system())
-        .add_default_plugins()
+        .add_plugins(DefaultPlugins)
         .run();
 }

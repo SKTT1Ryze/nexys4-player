@@ -8,4 +8,9 @@ edition = "2018"
 
 [dependencies]
 serialport = { path = "../serialport-rs" }
-conrod = { version = "0.52.0", features = ["piston", "glium", "winit"] }
+bevy = "0.4.0"
+rand = "0.7.3"
+
+[profile.dev]
+# opt-level = 1               # Use slightly better optimizations.
+# overflow-checks = false     # Disable integer overflow checks.
