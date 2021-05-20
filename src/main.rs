@@ -1,118 +1,87 @@
-//! 华中科技大学接口技术大作业
-#[macro_use]
-extern crate conrod;
+// 华中科技大学接口技术大作业
+use bevy::prelude::*;
+use rand::prelude::*;
+use std::time::Duration;
 
-fn main() {
-    feature::main();
+const pos_vec: [(i32, i32); 5] = [(0, 0), (10, 10), (20, 20), (30, 30), (40, 40)];
+static mut pos_idx: usize = 0;
+struct SnakeHead;
+struct Materials {
+    head_material: Handle<ColorMaterial>,
 }
 
-mod feature {
-    use conrod::{self, widget, Colorable, Positionable, Widget};
-    use conrod::backend::glium::glium;
-    use conrod::backend::glium::glium::{DisplayBuild, Surface};
-    use std;
-
-    pub fn main() {
-        const WIDTH: u32 = 400;
-        const HEIGHT: u32 = 200;
-
-        // Build the window.
-        let display = glium::glutin::WindowBuilder::new()
-            .with_vsync()
-            .with_dimensions(WIDTH, HEIGHT)
-            .with_title("Hello Conrod!")
-            .with_multisampling(4)
-            .build_glium()
-            .unwrap();
-
-        // construct our `Ui`.
-        let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).build();
-
-        // Generate the widget identifiers.
-        widget_ids!(struct Ids { text, line });
-        let ids = Ids::new(ui.widget_id_generator());
-
-        // Add a `Font` to the `Ui`'s `font::Map` from file.
-        const FONT_PATH: &'static str =
-            concat!(env!("CARGO_MANIFEST_DIR"), "/assets/fonts/NotoSans/NotoSans-Regular.ttf");
-        ui.fonts.insert_from_file(FONT_PATH).unwrap();
-
-        // A type used for converting `conrod::render::Primitives` into `Command`s that can be used
-        // for drawing to the glium `Surface`.
-        let mut renderer = conrod::backend::glium::Renderer::new(&display).unwrap();
-
-        // The image map describing each of our widget->image mappings (in our case, none).
-        let image_map = conrod::image::Map::<glium::texture::Texture2d>::new();
-
-        // Poll events from the window.
-        let mut last_update = std::time::Instant::now();
-        let mut ui_needs_update = true;
-        'main: loop {
-
-            // We don't want to loop any faster than 60 FPS, so wait until it has been at least
-            // 16ms since the last yield.
-            let sixteen_ms = std::time::Duration::from_millis(16);
-            let duration_since_last_update = std::time::Instant::now().duration_since(last_update);
-            if duration_since_last_update < sixteen_ms {
-                std::thread::sleep(sixteen_ms - duration_since_last_update);
-            }
-
-            // Collect all pending events.
-            let mut events: Vec<_> = display.poll_events().collect();
-
-            // If there are no events and the `Ui` does not need updating, wait for the next event.
-            if events.is_empty() && !ui_needs_update {
-                events.extend(display.wait_events().next());
-            }
-
-            // Reset the needs_update flag and time this update.
-            ui_needs_update = false;
-            last_update = std::time::Instant::now();
-
-            // Handle all events.
-            for event in events {
-
-                // Use the `winit` backend feature to convert the winit event to a conrod one.
-                if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
-                    ui.handle_event(event);
-                    ui_needs_update = true;
-                }
-
-                match event {
-                    // Break from the loop upon `Escape`.
-                    glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                    glium::glutin::Event::Closed =>
-                        break 'main,
-                    _ => {},
-                }
-            }
-
-            // Instantiate all widgets in the GUI.
-            {
-                let ui = &mut ui.set_widgets();
-
-                // "Hello World!" in the middle of the screen.
-                widget::Text::new("Hello World!")
-                    .top_left()
-                    .color(conrod::color::WHITE)
-                    .font_size(32)
-                    .set(ids.text, ui);
-                
-                widget::Line::new([0.0, 0.0], [WIDTH as f64, 0.0])
-                    .set(ids.line, ui);
-                
-                
-            }
-
-            // Render the `Ui` and then display it on the screen.
-            if let Some(primitives) = ui.draw_if_changed() {
-                renderer.fill(&display, primitives, &image_map);
-                let mut target = display.draw();
-                target.clear_color(0.0, 0.0, 0.0, 1.0);
-                renderer.draw(&display, &mut target, &image_map).unwrap();
-                target.finish().unwrap();
-            }
-        }
+struct SnakeSpawnTimer(Timer);
+impl Default for SnakeSpawnTimer {
+    fn default() -> Self {
+        Self(Timer::new(Duration::from_millis(1000), true))
     }
 }
 
+// Commands -> Resources -> Components -> Queries
+fn setup(mut commands: Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
+    commands.spawn(Camera2dComponents::default());
+    commands.insert_resource(
+        Materials {
+            head_material: materials.add(Color::rgb(0.7, 0.7, 0.7).into())
+        }
+    );
+}
+
+fn game_setup(mut commands: Commands, materials: Res<Materials>) {
+    commands.spawn(
+        SpriteComponents {
+            material: materials.head_material.clone(),
+            sprite: Sprite::new(Vec2::new(10.0, 10.0)),
+            ..Default::default()
+        }
+    ).with(SnakeHead);
+}
+
+fn snake_movement(mut head_positions: Query<With<SnakeHead, &mut Transform>>) {
+    for mut transform in &mut head_positions.iter() {
+        let x = transform.translation().x();
+        transform.translation_mut().set_x( x + 2.0);        
+    }
+}
+
+fn snake_spawn(
+    mut commands: Commands,
+    materials: Res<Materials>,
+    time: Res<Time>,
+    mut timer: ResMut<SnakeSpawnTimer>
+) {
+    timer.0.tick(time.delta_seconds);
+    let mut transfrom = Transform::default();
+    let mut vec_3 = Vec3::default();
+    vec_3.set_x(pos_vec[unsafe{pos_idx}].0 as f32);
+    vec_3.set_y(pos_vec[unsafe{pos_idx}].1 as f32);
+    transfrom.set_translation(vec_3);
+    if timer.0.finished {
+        commands.spawn(
+            SpriteComponents {
+                material: materials.head_material.clone(),
+                sprite: Sprite::new(Vec2::new(10.0, 10.0)),
+                transform: transfrom,
+                ..Default::default()
+            }
+        )
+        .with(SnakeHead);
+        unsafe { pos_idx = (pos_idx + 1) % 5; }
+    }
+}
+
+fn main() {
+    println!("hello, nexys4!");
+    App::build()
+        .add_resource(SnakeSpawnTimer(Timer::new(
+            Duration::from_millis(500. as u64),
+            true,
+        )))
+        .add_startup_system(setup.system())
+        .add_startup_stage("game_setup")
+        .add_startup_system_to_stage("game_setup", game_setup.system())
+        .add_system(snake_movement.system())
+        .add_system(snake_spawn.system())
+        .add_default_plugins()
+        .run();
+}
