@@ -40,7 +40,7 @@ impl Nexys4Serial {
     /// 
     pub fn read_one_byte(&mut self) -> Result<u8> {
         let mut buf = [0u8];
-        let bytes = self.port.read(&mut buf)?;
+        self.port.read(&mut buf)?;
         Ok(buf[0])
     }
 
