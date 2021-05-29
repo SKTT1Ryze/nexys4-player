@@ -31,7 +31,8 @@ fn animate_sprite_system(
         timer.tick(time.delta_seconds());
         if timer.finished() {
             let texture_atlas = texture_atlases.get(texture_atlas_handle).unwrap();
-            sprite.index = ((sprite.index as usize + 1) % texture_atlas.textures.len()) as u32;
+            let next_index = if (sprite.index + 1) % 3 == 0 {sprite.index - 2} else {sprite.index + 1};
+            sprite.index = next_index;
         }
     }
 }
@@ -40,26 +41,32 @@ fn animate_sprite_system(
 fn keyboard_event_system(
     mut state: Local<State>,
     keyboard_input_events: Res<Events<KeyboardInput>>,
-    mut query: Query<(&mut Player, &mut Transform)>,
+    mut query: Query<(&mut Player, &mut Transform, &mut TextureAtlasSprite)>,
 ) {
     for event in state.keyborad_reader.iter(&keyboard_input_events) {
         // println!("{:?}", event);
         if !event.state.is_pressed() { return; }
         match event.key_code {
             Some(k) => {
-                let (_, mut transform) = query.iter_mut().next().expect("query empty");
+                let (_, mut transform, mut sprite) = query.iter_mut().next().expect("query empty");
                 match k {
                     KeyCode::W => {
+                        // 改变 sprite 的位置
                         transform.translation.y += MOVE_STEP;
+                        // 改变 sprite 的朝向
+                        sprite.index = 9;
                     },
                     KeyCode::S => {
                         transform.translation.y -= MOVE_STEP;
+                        sprite.index = 0;
                     },
                     KeyCode::A => {
                         transform.translation.x -= MOVE_STEP;
+                        sprite.index = 3;
                     },
                     KeyCode::D => {
                         transform.translation.x += MOVE_STEP;
+                        sprite.index = 6;
                     },
                     _ => {
                         // do nothing
@@ -76,12 +83,13 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
-    let texture_handle = asset_server.load("textures/gabe-idle-run.png");
+    let texture_handle0 = asset_server.load("textures/player0.png");
+    let texture_handle1 = asset_server.load("textures/player1.png");
     let player0 = player::PlayerBuilder::default0(
-        texture_handle.clone(), player::TextureSize::new(7, 1)
+        texture_handle0.clone(), player::TextureSize::new(3, 4)
     );
     let player1 = player::PlayerBuilder::default1(
-        texture_handle.clone(), player::TextureSize::new(7, 1)
+        texture_handle1.clone(), player::TextureSize::new(3, 4)
     );
     let texture_atlas0 = TextureAtlas::from_grid(player0.texture.0.clone(), player0.tile_size, player0.texture.1.columns, player0.texture.1.rows);
     let texture_atlas1 = TextureAtlas::from_grid(player1.texture.0.clone(), player1.tile_size, player1.texture.1.columns, player1.texture.1.rows);
@@ -94,13 +102,13 @@ fn setup(
             transform: player0.transform,
             ..Default::default()
         })
-        .with(Timer::from_seconds(0.1, true))
+        .with(Timer::from_seconds(TIMER_INTERVAL, true))
         .with(Player)
         .spawn(SpriteSheetBundle {
             texture_atlas: texture_atlas_handle1,
             transform: player1.transform,
             ..Default::default()
         })
-        .with(Timer::from_seconds(0.1, true))
+        .with(Timer::from_seconds(TIMER_INTERVAL, true))
         .with(Player);
 }

@@ -1,6 +1,7 @@
 //! 角色控制
 
 use bevy::prelude::*;
+use super::config::*;
 
 /// 玩家控制的角色构建器
 pub struct PlayerBuilder {
@@ -17,7 +18,7 @@ impl PlayerBuilder {
             tile_size: Vec2::new(10.0, 10.0),
             transform: Transform {
                 translation: Vec3 {x: -100.0, y: -100.0, z: 0.0},
-                scale: Vec3 {x: 10.0, y: 10.0, z:0.0},
+                scale: Vec3 {x: SPRITE_SCALE, y: SPRITE_SCALE, z:0.0},
                 ..Default::default()
             }
         }
@@ -29,7 +30,7 @@ impl PlayerBuilder {
             tile_size: Vec2::new(10.0, 10.0),
             transform: Transform {
                 translation: Vec3 {x: 100.0, y: 100.0, z: 0.0},
-                scale: Vec3 {x: 10.0, y: 10.0, z:0.0},
+                scale: Vec3 {x: SPRITE_SCALE, y: SPRITE_SCALE, z:0.0},
                 ..Default::default()
             }
         }
