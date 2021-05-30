@@ -7,7 +7,7 @@ use super::config::*;
 pub struct PlayerBuilder {
     /// Texture 的句柄
     pub texture: (Handle<Texture>, TextureSize),
-    pub tile_size: Vec2,
+    pub size: Vec2,
     pub transform: Transform
 }
 
@@ -15,7 +15,7 @@ impl PlayerBuilder {
     pub fn default0(texture: Handle<Texture>, texture_size: TextureSize) -> Self {
         Self {
             texture: (texture, texture_size),
-            tile_size: Vec2::new(10.0, 10.0),
+            size: Vec2::new(PLAYER_SIZE, PLAYER_SIZE),
             transform: Transform {
                 translation: Vec3 {x: -100.0, y: -100.0, z: 0.0},
                 scale: Vec3 {x: SPRITE_SCALE, y: SPRITE_SCALE, z:0.0},
@@ -27,7 +27,7 @@ impl PlayerBuilder {
     pub fn default1(texture: Handle<Texture>, texture_size: TextureSize) -> Self {
         Self {
             texture: (texture, texture_size),
-            tile_size: Vec2::new(10.0, 10.0),
+            size: Vec2::new(PLAYER_SIZE, PLAYER_SIZE),
             transform: Transform {
                 translation: Vec3 {x: 100.0, y: 100.0, z: 0.0},
                 scale: Vec3 {x: SPRITE_SCALE, y: SPRITE_SCALE, z:0.0},
