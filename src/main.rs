@@ -3,6 +3,8 @@ mod player;
 mod buttle;
 mod manager;
 mod config;
+mod enemy;
+mod util;
 
 use bevy::math::f32;
 use bevy::prelude::*;
@@ -73,7 +75,6 @@ fn keyboard_event_system(
     mut query: Query<(&mut player::Player, &mut Transform, &mut TextureAtlasSprite)>,
 ) {
     for event in state.keyborad_reader.iter(&keyboard_input_events) {
-        // println!("{:?}", event);
         if !event.state.is_pressed() { return; }
         match event.key_code {
             Some(k) => {
@@ -86,36 +87,45 @@ fn keyboard_event_system(
                         // 改变 sprite 的朝向
                         sprite.index = 9;
                         // 改变 player 的朝向记录
-                        player.toward = player::TOWARD::Up;
+                        player.toward = util::TOWARD::Up;
                     },
                     KeyCode::S => {
                         transform.translation.y -= MAP_BLOCK_WIDTH;
                         sprite.index = 0;
-                        player.toward = player::TOWARD::Down;
+                        player.toward = util::TOWARD::Down;
                     },
                     KeyCode::A => {
                         transform.translation.x -= MAP_BLOCK_WIDTH;
                         sprite.index = 3;
-                        player.toward = player::TOWARD::Left;
+                        player.toward = util::TOWARD::Left;
                     },
                     KeyCode::D => {
                         transform.translation.x += MAP_BLOCK_WIDTH;
                         sprite.index = 6;
-                        player.toward = player::TOWARD::Right;
+                        player.toward = util::TOWARD::Right;
                     },
                     KeyCode::J => {
                         // 生成子弹
                         // todo: 通过名字来找相应的贴图
                         // 如果角色不是水平朝向不能发射子弹
-                        if player.toward == player::TOWARD::Up || player.toward == player::TOWARD::Down { return; }
+                        if player.toward == util::TOWARD::Up || player.toward == util::TOWARD::Down { return; }
                         let texture = assets_mananger.textures.get("buttle").expect("failed to find texture");
                         let buttle = buttle::ButtleBuilder::type0(texture.clone());
                         let material = assets_mananger.materials.get("red").expect("failed to find material");
                         let mut buttle_transform = transform.clone();
                         buttle_transform.scale.x /= 2.;
                         buttle_transform.scale.y /= 2.;
+                        match player.toward {
+                            util::TOWARD::Left => {
+                                buttle_transform.translation.x -= PLAYER_SIZE;
+                            },
+                            util::TOWARD::Right => {
+                                buttle_transform.translation.x += PLAYER_SIZE;
+                            },
+                            _ => panic!("impossiable!")
+                        }
                         let mut velocity = Velocity::default();
-                        if player.toward == player::TOWARD::Left {
+                        if player.toward == util::TOWARD::Left {
                             velocity.translation *= -1.;
                         }
                         commands
@@ -219,11 +229,11 @@ fn collision_system(
             let player_right = t.translation.x + PLAYER_SIZE / 2.;
             let player_top = t.translation.y + PLAYER_SIZE / 2.;
             let player_bottom = t.translation.y - PLAYER_SIZE / 2.;
-            if is_intersected(
+            if util::is_intersected(
                 left, right, top, bottom,
                 player_left, player_right, player_top, player_bottom
             ) {
-                println!("buttle crash player!");
+                commands.despawn(e);
                 p.crash();
             }
 
@@ -244,10 +254,10 @@ fn setup(
     assets_manager.textures.insert("player0".to_string(), texture_handle0.clone());
     assets_manager.textures.insert("player1".to_string(), texture_handle1.clone());
     let player0 = player::PlayerBuilder::default0(
-        texture_handle0.clone(), player::TextureSize::new(3, 4)
+        texture_handle0.clone(), util::TextureSize::new(3, 4)
     );
     let player1 = player::PlayerBuilder::default1(
-        texture_handle1.clone(), player::TextureSize::new(3, 4)
+        texture_handle1.clone(), util::TextureSize::new(3, 4)
     );
     let texture_atlas0 = TextureAtlas::from_grid(player0.texture.0.clone(), player0.size, player0.texture.1.columns, player0.texture.1.rows);
     let texture_atlas1 = TextureAtlas::from_grid(player1.texture.0.clone(), player1.size, player1.texture.1.columns, player1.texture.1.rows);
@@ -289,16 +299,4 @@ fn setup(
         }
     );
     assets_manager.materials.insert("blue".to_string(), material.clone());
-}
-
-/// 判断两个矩形是否相交
-fn is_intersected(
-    left_x: f32, right_x: f32, top_x: f32, bottom_x: f32,
-    left_y: f32, right_y: f32, top_y: f32, bottom_y: f32
-) -> bool {
-    let left = left_x.max(left_y);
-    let bottom = bottom_x.max(bottom_y);
-    let right = right_x.min(right_y);
-    let top = top_x.min(top_y);
-    !(left > right || bottom > top)
 }

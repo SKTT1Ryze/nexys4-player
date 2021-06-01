@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use super::config::*;
+use super::util::*;
 
 /// 玩家控制的角色构建器
 pub struct PlayerBuilder {
@@ -37,20 +38,6 @@ impl PlayerBuilder {
     }
 }
 
-pub struct TextureSize {
-    pub columns: usize,
-    pub rows: usize
-}
-
-impl TextureSize {
-    pub fn new(columns: usize, rows: usize) -> Self {
-        Self {
-            columns,
-            rows
-        }
-    }
-}
-
 /// 记录角色的一些信息
 pub struct Player {
     /// 朝向
@@ -76,13 +63,4 @@ impl Player {
     pub fn crash(&mut self) {
         // todo   
     }
-}
-
-/// 角色的朝向
-#[derive(PartialEq, Eq)]
-pub enum TOWARD {
-    Up,
-    Down,
-    Left,
-    Right
 }
