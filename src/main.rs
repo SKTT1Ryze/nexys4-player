@@ -4,6 +4,7 @@ mod buttle;
 mod manager;
 mod config;
 
+use bevy::math::f32;
 use bevy::prelude::*;
 use bevy::input::keyboard::KeyboardInput;
 use rand::Rng;
@@ -26,8 +27,6 @@ fn main() {
 struct State {
     keyborad_reader: EventReader<KeyboardInput>
 }
-
-struct Player;
 
 struct Velocity {
     translation: Vec3,
@@ -71,39 +70,68 @@ fn keyboard_event_system(
     mut state: Local<State>,
     keyboard_input_events: Res<Events<KeyboardInput>>,
     assets_mananger: Res<manager::AssetsManager>,
-    mut query: Query<(&mut Player, &mut Transform, &mut TextureAtlasSprite)>,
+    mut query: Query<(&mut player::Player, &mut Transform, &mut TextureAtlasSprite)>,
 ) {
     for event in state.keyborad_reader.iter(&keyboard_input_events) {
         // println!("{:?}", event);
         if !event.state.is_pressed() { return; }
         match event.key_code {
             Some(k) => {
-                let (_, mut transform, mut sprite) = query.iter_mut().next().expect("query empty");
+                // 取出第一个 player 对其进行控制
+                let (mut player, mut transform, mut sprite) = query.iter_mut().next().expect("query empty");
                 match k {
                     KeyCode::W => {
                         // 改变 sprite 的位置
                         transform.translation.y += MAP_BLOCK_WIDTH;
                         // 改变 sprite 的朝向
                         sprite.index = 9;
+                        // 改变 player 的朝向记录
+                        player.toward = player::TOWARD::Up;
                     },
                     KeyCode::S => {
                         transform.translation.y -= MAP_BLOCK_WIDTH;
                         sprite.index = 0;
+                        player.toward = player::TOWARD::Down;
                     },
                     KeyCode::A => {
                         transform.translation.x -= MAP_BLOCK_WIDTH;
                         sprite.index = 3;
+                        player.toward = player::TOWARD::Left;
                     },
                     KeyCode::D => {
                         transform.translation.x += MAP_BLOCK_WIDTH;
                         sprite.index = 6;
+                        player.toward = player::TOWARD::Right;
                     },
                     KeyCode::J => {
                         // 生成子弹
                         // todo: 通过名字来找相应的贴图
-                        let texture = assets_mananger.texture.get(2).expect("failed to find texture");
+                        // 如果角色不是水平朝向不能发射子弹
+                        if player.toward == player::TOWARD::Up || player.toward == player::TOWARD::Down { return; }
+                        let texture = assets_mananger.textures.get("buttle").expect("failed to find texture");
                         let buttle = buttle::ButtleBuilder::type0(texture.clone());
-                        todo!()
+                        let material = assets_mananger.materials.get("red").expect("failed to find material");
+                        let mut buttle_transform = transform.clone();
+                        buttle_transform.scale.x /= 2.;
+                        buttle_transform.scale.y /= 2.;
+                        let mut velocity = Velocity::default();
+                        if player.toward == player::TOWARD::Left {
+                            velocity.translation *= -1.;
+                        }
+                        commands
+                            .spawn(
+                                SpriteBundle {
+                                    sprite: Sprite {
+                                        size: buttle.size,
+                                        resize_mode: SpriteResizeMode::Manual
+                                    },
+                                    material: material.clone(),
+                                    transform: buttle_transform,
+                                    ..Default::default()
+                                }
+                            )
+                            .with(velocity)
+                            .with(buttle::Buttle::new(0, 5));
                     },
                     _ => {
                         // do nothing
@@ -136,8 +164,10 @@ fn buttle_move_system(
 
 /// 碰撞系统
 fn collision_system(
+    commands: &mut Commands,
     wins: Res<Windows>,
-    mut query: Query<(Mut<Velocity>, Mut<Transform>)>
+    mut buttle_query: Query<(Entity, Mut<Velocity>, Mut<Transform>, Mut<buttle::Buttle>)>,
+    mut player_query: Query<(Mut<player::Player>, Mut<Transform>)>
 ) {
     let mut rnd = rand::thread_rng();
     let win = wins.get_primary().unwrap();
@@ -147,7 +177,7 @@ fn collision_system(
     let wall_left = -(win.width() / 2.);
     let wall_right = win.width() / 2.;
 
-    for (mut v, mut t) in query.iter_mut() {
+    for (e, mut v, mut t, mut b) in buttle_query.iter_mut() {
         let left = t.translation.x - BULLET_SIZE / 2.;
         let right = t.translation.x + BULLET_SIZE / 2.;
         let top = t.translation.y + BULLET_SIZE / 2.;
@@ -158,20 +188,45 @@ fn collision_system(
             t.translation.y = ground + BULLET_SIZE / 2.0;
             // apply an impulse upwards
             v.translation.y = rnd.gen_range(70.0, 100.0);
+            if b.crash() {
+                commands.despawn(e);
+            }
         }
         if top > ceiling {
             t.translation.y = ceiling - BULLET_SIZE / 2.0;
+            commands.despawn(e);
         }
         // on side walls flip the horizontal velocity
         if left < wall_left {
             t.translation.x = wall_left + BULLET_SIZE / 2.0;
             v.translation.x *= -1.0;
             v.rotation *= -1.0;
+            if b.crash() {
+                commands.despawn(e);
+            }
         }
         if right > wall_right {
             t.translation.x = wall_right - BULLET_SIZE / 2.0;
             v.translation.x *= -1.0;
             v.rotation *= -1.0;
+            if b.crash() {
+                commands.despawn(e);
+            }
+        }
+
+        for (mut p, t) in player_query.iter_mut() {
+            let player_left = t.translation.x - PLAYER_SIZE / 2.;
+            let player_right = t.translation.x + PLAYER_SIZE / 2.;
+            let player_top = t.translation.y + PLAYER_SIZE / 2.;
+            let player_bottom = t.translation.y - PLAYER_SIZE / 2.;
+            if is_intersected(
+                left, right, top, bottom,
+                player_left, player_right, player_top, player_bottom
+            ) {
+                println!("buttle crash player!");
+                p.crash();
+            }
+
         }
     }
 }
@@ -186,8 +241,8 @@ fn setup(
     // 生成 player
     let texture_handle0 = asset_server.load("textures/player0.png");
     let texture_handle1 = asset_server.load("textures/player1.png");
-    assets_manager.texture.push(texture_handle0.clone());
-    assets_manager.texture.push(texture_handle1.clone());
+    assets_manager.textures.insert("player0".to_string(), texture_handle0.clone());
+    assets_manager.textures.insert("player1".to_string(), texture_handle1.clone());
     let player0 = player::PlayerBuilder::default0(
         texture_handle0.clone(), player::TextureSize::new(3, 4)
     );
@@ -206,36 +261,44 @@ fn setup(
             ..Default::default()
         })
         .with(Timer::from_seconds(TIMER_INTERVAL, true))
-        .with(Player)
+        .with(player::Player::default())
         .spawn(SpriteSheetBundle {
             texture_atlas: texture_atlas_handle1,
             transform: player1.transform,
             ..Default::default()
         })
         .with(Timer::from_seconds(TIMER_INTERVAL, true))
-        .with(Player);
-
+        .with(player::Player::default());
+    
     // 生成子弹
     let texture_handle = asset_server.load("branding/icon.png");
-    assets_manager.texture.push(texture_handle.clone());
-    let buttle = buttle::ButtleBuilder::type0(texture_handle);
-    commands
-        .spawn(SpriteBundle {
-            sprite: Sprite {
-                size: buttle.size,
-                resize_mode: SpriteResizeMode::Manual
-            },
-            material: materials.add(
-                ColorMaterial {
-                    color: buttle.color,
-                    texture: Some(buttle.texture.clone())
-                }
-            ),
-            transform: Transform {
-                scale: Vec3 {x: SPRITE_SCALE / 2.0, y: SPRITE_SCALE / 2.0, z: 0.0},
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .with(Velocity::default());
+    assets_manager.textures.insert("buttle".to_string(), texture_handle.clone());
+    let buttle0 = buttle::ButtleBuilder::type0(texture_handle.clone());
+    let buttle1 = buttle::ButtleBuilder::type1(texture_handle);
+    let material = materials.add(
+        ColorMaterial {
+            color: buttle0.color,
+            texture: Some(buttle0.texture.clone())
+        }
+    );
+    assets_manager.materials.insert("red".to_string(), material.clone());
+    let material = materials.add(
+        ColorMaterial {
+            color: buttle1.color,
+            texture: Some(buttle1.texture.clone())
+        }
+    );
+    assets_manager.materials.insert("blue".to_string(), material.clone());
+}
+
+/// 判断两个矩形是否相交
+fn is_intersected(
+    left_x: f32, right_x: f32, top_x: f32, bottom_x: f32,
+    left_y: f32, right_y: f32, top_y: f32, bottom_y: f32
+) -> bool {
+    let left = left_x.max(left_y);
+    let bottom = bottom_x.max(bottom_y);
+    let right = right_x.min(right_y);
+    let top = top_x.min(top_y);
+    !(left > right || bottom > top)
 }

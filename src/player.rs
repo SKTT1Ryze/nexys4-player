@@ -50,3 +50,39 @@ impl TextureSize {
         }
     }
 }
+
+/// 记录角色的一些信息
+pub struct Player {
+    /// 朝向
+    pub toward: TOWARD,
+    /// 弹量
+    pub bomb: u32,
+    /// 得分
+    pub score: u32
+}
+
+impl std::default::Default for Player {
+    fn default() -> Self {
+        Self {
+            toward: TOWARD::Down,
+            bomb: 5,
+            score: 0
+        }
+    }
+}
+
+impl Player {
+    // 碰撞
+    pub fn crash(&mut self) {
+        // todo   
+    }
+}
+
+/// 角色的朝向
+#[derive(PartialEq, Eq)]
+pub enum TOWARD {
+    Up,
+    Down,
+    Left,
+    Right
+}
