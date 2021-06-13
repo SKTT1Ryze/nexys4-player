@@ -38,18 +38,16 @@ impl Nexys4Serial {
 
     /// 读取一个字节
     /// 
-    pub fn read_one_byte(&mut self) -> Result<u8> {
+    pub fn read_one_byte(&mut self) -> Option<u8> {
         let mut buf = [0u8];
-        self.port.read(&mut buf)?;
-        Ok(buf[0])
+        self.port.read(&mut buf).map_or(None, |_| Some(buf[0]) )
     }
 
     /// 写一个字节
     /// 
-    pub fn write_one_byte(&mut self, byte: u8) -> Result<()> {
+    pub fn write_one_byte(&mut self, byte: u8) -> Option<()> {
         let buf = [byte];
-        self.port.write(&buf)?;
-        Ok(())
+        self.port.write(&buf).map_or(None, |_| Some(()))
     }
 
 

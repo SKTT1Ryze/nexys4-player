@@ -10,6 +10,7 @@ edition = "2018"
 serialport = { path = "../serialport-rs" }
 bevy = "0.4.0"
 rand = "0.7.3"
+lazy_static = "1.4.0"
 
 [profile.dev]
 # opt-level = 1               # Use slightly better optimizations.

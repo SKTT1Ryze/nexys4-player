@@ -5,13 +5,19 @@ mod manager;
 mod config;
 mod enemy;
 mod util;
+mod serial;
 
 use bevy::math::f32;
 use bevy::prelude::*;
 use bevy::input::keyboard::KeyboardInput;
 use rand::Rng;
 use config::*;
+use std::sync::Arc;
+use std::sync::Mutex;
 
+lazy_static::lazy_static! {
+    static ref SERIAL: Arc<Mutex<serial::Nexys4Serial>> = Arc::new(Mutex::new(serial::Nexys4Serial::first_available(115200).expect("no avaiable port")));
+}
 fn main() {
     App::build()
         .add_resource(manager::AssetsManager::empty())
@@ -22,6 +28,7 @@ fn main() {
         .add_system(gravity_system.system())
         .add_system(buttle_move_system.system())
         .add_system(collision_system.system())
+        .add_system(serial_event_system.system())
         .run();
 }
 
@@ -149,6 +156,44 @@ fn keyboard_event_system(
                 }
             },
             _ => {} // do nothing
+        }
+    }
+}
+
+/// 通过串口来控制 player1
+fn serial_event_system(
+    mut query: Query<(&mut player::Player, &mut Transform, &mut TextureAtlasSprite)>
+) {
+    let mut serial= SERIAL.lock().unwrap();
+    if let Some(byte) = serial.read_one_byte() {
+        // 取出第二个 player 对其进行控制
+        let (_, _, _) = query.iter_mut().next().expect("query empty");
+        let (mut player, mut transform, mut sprite) = query.iter_mut().next().expect("has no player1");
+        match byte {
+            48 => {
+                // 改变 sprite 的位置
+                transform.translation.y += MAP_BLOCK_WIDTH;
+                // 改变 sprite 的朝向
+                sprite.index = 9;
+                // 改变 player 的朝向记录
+                player.toward = util::TOWARD::Up;
+            },
+            49 => {
+                transform.translation.y -= MAP_BLOCK_WIDTH;
+                sprite.index = 0;
+                player.toward = util::TOWARD::Down;
+            },
+            50 => {
+                transform.translation.x -= MAP_BLOCK_WIDTH;
+                sprite.index = 3;
+                player.toward = util::TOWARD::Left;
+            },
+            51 => {
+                transform.translation.x += MAP_BLOCK_WIDTH;
+                sprite.index = 6;
+                player.toward = util::TOWARD::Right;
+            },
+            _ => {}
         }
     }
 }
