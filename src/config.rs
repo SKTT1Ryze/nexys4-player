@@ -19,3 +19,6 @@ pub const GRAVITY: f32 = -9.821 * 1.0;
 
 /// 敌人 y 坐标对于 x 轴的向下偏移量
 pub const ENEMY_OFFSET: f32 = 25.;
+
+/// 串口波特率
+pub const SERIAL_BAUD_RATE: u32 = 115_200;

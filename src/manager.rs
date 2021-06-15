@@ -6,7 +6,7 @@ use std::collections::HashMap;
 pub struct AssetsManager {
     pub fonts: Vec<Handle<Font>>,
     pub textures: HashMap<String, Handle<Texture>>,
-    pub materials: HashMap<String, Handle<ColorMaterial>>
+    pub materials: HashMap<String, Handle<ColorMaterial>>,
 }
 
 impl AssetsManager {
@@ -14,7 +14,7 @@ impl AssetsManager {
         Self {
             fonts: Vec::new(),
             textures: HashMap::new(),
-            materials: HashMap::new()
+            materials: HashMap::new(),
         }
     }
 }

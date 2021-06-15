@@ -1,7 +1,7 @@
 //! 子弹控制
 
-use bevy::prelude::*;
 use super::config::*;
+use bevy::prelude::*;
 
 pub struct ButtleBuilder {
     /// Texture 的句柄
@@ -32,13 +32,13 @@ impl ButtleBuilder {
 /// 记录子弹的信息
 pub struct Buttle {
     /// 所有者
-    /// 
+    ///
     /// 目前通过 id 的方式呈现，后面考虑使用引用
     pub owner_id: u32,
     /// 碰撞次数
     collision_times: u32,
     /// 最大碰撞次数
-    max_times: u32
+    max_times: u32,
 }
 
 impl Buttle {
@@ -46,7 +46,7 @@ impl Buttle {
         Self {
             owner_id,
             collision_times: 0,
-            max_times
+            max_times,
         }
     }
 
@@ -60,4 +60,3 @@ impl Buttle {
         }
     }
 }
-

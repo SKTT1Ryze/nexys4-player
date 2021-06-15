@@ -1,15 +1,15 @@
 //! 角色控制
 
-use bevy::prelude::*;
 use super::config::*;
 use super::util::*;
+use bevy::prelude::*;
 
 /// 玩家控制的角色构建器
 pub struct PlayerBuilder {
     /// Texture 的句柄
     pub texture: (Handle<Texture>, TextureSize),
     pub size: Vec2,
-    pub transform: Transform
+    pub transform: Transform,
 }
 
 impl PlayerBuilder {
@@ -18,10 +18,18 @@ impl PlayerBuilder {
             texture: (texture, texture_size),
             size: Vec2::new(PLAYER_SIZE, PLAYER_SIZE),
             transform: Transform {
-                translation: Vec3 {x: -100.0, y: -100.0, z: 0.0},
-                scale: Vec3 {x: SPRITE_SCALE, y: SPRITE_SCALE, z:0.0},
+                translation: Vec3 {
+                    x: -100.0,
+                    y: -100.0,
+                    z: 0.0,
+                },
+                scale: Vec3 {
+                    x: SPRITE_SCALE,
+                    y: SPRITE_SCALE,
+                    z: 0.0,
+                },
                 ..Default::default()
-            }
+            },
         }
     }
 
@@ -30,10 +38,18 @@ impl PlayerBuilder {
             texture: (texture, texture_size),
             size: Vec2::new(PLAYER_SIZE, PLAYER_SIZE),
             transform: Transform {
-                translation: Vec3 {x: 100.0, y: 100.0, z: 0.0},
-                scale: Vec3 {x: SPRITE_SCALE, y: SPRITE_SCALE, z:0.0},
+                translation: Vec3 {
+                    x: 100.0,
+                    y: 100.0,
+                    z: 0.0,
+                },
+                scale: Vec3 {
+                    x: SPRITE_SCALE,
+                    y: SPRITE_SCALE,
+                    z: 0.0,
+                },
                 ..Default::default()
-            }
+            },
         }
     }
 }
@@ -45,7 +61,7 @@ pub struct Player {
     /// 弹量
     pub bomb: u32,
     /// 得分
-    pub score: u32
+    pub score: u32,
 }
 
 impl std::default::Default for Player {
@@ -53,7 +69,7 @@ impl std::default::Default for Player {
         Self {
             toward: TOWARD::Down,
             bomb: 5,
-            score: 0
+            score: 0,
         }
     }
 }
@@ -61,6 +77,6 @@ impl std::default::Default for Player {
 impl Player {
     // 碰撞
     pub fn crash(&mut self) {
-        // todo   
+        // todo
     }
 }
