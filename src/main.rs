@@ -18,6 +18,7 @@ use std::sync::Mutex;
 lazy_static::lazy_static! {
     static ref SERIAL: Arc<Mutex<serial::Nexys4Serial>> = Arc::new(Mutex::new(serial::Nexys4Serial::first_available(115200).expect("no avaiable port")));
 }
+
 fn main() {
     App::build()
         .add_resource(manager::AssetsManager::empty())
@@ -52,7 +53,7 @@ impl std::default::Default for Velocity {
 }
 
 impl Velocity {
-    pub fn new(translation: Vec3, rotation: f32) -> Self {
+    pub fn _new(translation: Vec3, rotation: f32) -> Self {
         Self {
             translation,
             rotation
@@ -162,15 +163,18 @@ fn keyboard_event_system(
 
 /// 通过串口来控制 player1
 fn serial_event_system(
+    commands: &mut Commands,
+    assets_mananger: Res<manager::AssetsManager>,
     mut query: Query<(&mut player::Player, &mut Transform, &mut TextureAtlasSprite)>
 ) {
     let mut serial= SERIAL.lock().unwrap();
     if let Some(byte) = serial.read_one_byte() {
         // 取出第二个 player 对其进行控制
-        let (_, _, _) = query.iter_mut().next().expect("query empty");
-        let (mut player, mut transform, mut sprite) = query.iter_mut().next().expect("has no player1");
+        let mut iter = query.iter_mut();
+        let (_, _, _) = iter.next().expect("query empty");
+        let (mut player, mut transform, mut sprite) = iter.next().expect("has no player1");
         match byte {
-            48 => {
+            8 => {
                 // 改变 sprite 的位置
                 transform.translation.y += MAP_BLOCK_WIDTH;
                 // 改变 sprite 的朝向
@@ -178,21 +182,60 @@ fn serial_event_system(
                 // 改变 player 的朝向记录
                 player.toward = util::TOWARD::Up;
             },
-            49 => {
+            1 => {
                 transform.translation.y -= MAP_BLOCK_WIDTH;
                 sprite.index = 0;
                 player.toward = util::TOWARD::Down;
             },
-            50 => {
+            4 => {
                 transform.translation.x -= MAP_BLOCK_WIDTH;
                 sprite.index = 3;
                 player.toward = util::TOWARD::Left;
             },
-            51 => {
+            2 => {
                 transform.translation.x += MAP_BLOCK_WIDTH;
                 sprite.index = 6;
                 player.toward = util::TOWARD::Right;
             },
+            16 => {
+                // 生成子弹
+                // todo: 通过名字来找相应的贴图
+                // 如果角色不是水平朝向不能发射子弹
+                if player.toward == util::TOWARD::Up || player.toward == util::TOWARD::Down { return; }
+                let texture = assets_mananger.textures.get("buttle").expect("failed to find texture");
+                let buttle = buttle::ButtleBuilder::type0(texture.clone());
+                let material = assets_mananger.materials.get("red").expect("failed to find material");
+                let mut buttle_transform = transform.clone();
+                buttle_transform.scale.x /= 2.;
+                buttle_transform.scale.y /= 2.;
+                match player.toward {
+                    util::TOWARD::Left => {
+                        buttle_transform.translation.x -= PLAYER_SIZE;
+                    },
+                    util::TOWARD::Right => {
+                        buttle_transform.translation.x += PLAYER_SIZE;
+                    },
+                    _ => panic!("impossiable!")
+                }
+                let mut velocity = Velocity::default();
+                if player.toward == util::TOWARD::Left {
+                    velocity.translation *= -1.;
+                }
+                commands
+                    .spawn(
+                        SpriteBundle {
+                            sprite: Sprite {
+                                size: buttle.size,
+                                resize_mode: SpriteResizeMode::Manual
+                            },
+                            material: material.clone(),
+                            transform: buttle_transform,
+                            ..Default::default()
+                        }
+                    )
+                    .with(velocity)
+                    .with(buttle::Buttle::new(0, 5));
+            }
             _ => {}
         }
     }
