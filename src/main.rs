@@ -185,27 +185,27 @@ fn serial_event_system(
         let (_, _, _) = iter.next().expect("query empty");
         let (mut player, mut transform, mut sprite) = iter.next().expect("has no player1");
         match byte {
-            8 => {
+            BTN_U => {
                 transform.translation.y += MAP_BLOCK_WIDTH;
                 sprite.index = 9;
                 player.toward = util::TOWARD::Up;
             }
-            1 => {
+            BTN_D => {
                 transform.translation.y -= MAP_BLOCK_WIDTH;
                 sprite.index = 0;
                 player.toward = util::TOWARD::Down;
             }
-            4 => {
+            BTN_L => {
                 transform.translation.x -= MAP_BLOCK_WIDTH;
                 sprite.index = 3;
                 player.toward = util::TOWARD::Left;
             }
-            2 => {
+            BTN_R => {
                 transform.translation.x += MAP_BLOCK_WIDTH;
                 sprite.index = 6;
                 player.toward = util::TOWARD::Right;
             }
-            16 => {
+            BTN_C => {
                 if player.toward == util::TOWARD::Up || player.toward == util::TOWARD::Down {
                     return;
                 }

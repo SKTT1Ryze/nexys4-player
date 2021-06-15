@@ -22,3 +22,9 @@ pub const ENEMY_OFFSET: f32 = 25.;
 
 /// 串口波特率
 pub const SERIAL_BAUD_RATE: u32 = 115_200;
+
+pub const BTN_U: u8 = 'W' as u8;
+pub const BTN_D: u8 = 'S' as u8;
+pub const BTN_L: u8 = 'A' as u8;
+pub const BTN_R: u8 = 'D' as u8;
+pub const BTN_C: u8 = 'J' as u8;
